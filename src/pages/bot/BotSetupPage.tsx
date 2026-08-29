@@ -26,7 +26,12 @@ import {
 export const BotSetupPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const planId = searchParams.get('planId') || '';
+  const planParam =
+    searchParams.get('plan') ||
+    searchParams.get('planId') ||
+    searchParams.get('slug') ||
+    searchParams.get('id') ||
+    '';
 
   const { user, wallet, refreshWallet } = useAuth();
   const { refreshNotifications } = useApp();
@@ -44,11 +49,18 @@ export const BotSetupPage: React.FC = () => {
   useEffect(() => {
     botPlanService.getActiveBotPlans().then((res) => {
       if (res.data && res.data.length > 0) {
-        const found = res.data.find((p) => p.id === planId) || res.data[0];
+        const found =
+          res.data.find(
+            (p) =>
+              p.id === planParam ||
+              p.slug === planParam ||
+              (p.slug && p.slug.toLowerCase() === planParam.toLowerCase()) ||
+              (p.name && p.name.toLowerCase() === planParam.toLowerCase())
+          ) || res.data[0];
         setSelectedPlan(found);
       }
     });
-  }, [planId]);
+  }, [planParam]);
 
   const planPrice = selectedPlan ? Number(selectedPlan.price) : 99;
   const hasSufficientWalletBalance = currentBalance >= planPrice;

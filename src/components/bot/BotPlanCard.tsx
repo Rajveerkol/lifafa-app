@@ -13,7 +13,7 @@ export const BotPlanCard: React.FC<BotPlanCardProps> = ({ plan }) => {
   const navigate = useNavigate();
 
   const handleSelectPlan = () => {
-    navigate(`/create-bot/setup?plan=${plan.id}`);
+    navigate(`/create-bot/setup?plan=${plan.id}&planId=${plan.id}&slug=${plan.slug}`);
   };
 
   return (
