@@ -121,6 +121,110 @@ export const botService = {
   },
 
   /**
+   * Provision bot record upon purchase so the user immediately gets /bot/manage
+   */
+  async provisionPurchasedBot({
+    userId,
+    botPlanId,
+    botOrderId,
+    name,
+    username,
+    planSlug = 'basic',
+  }: {
+    userId: string;
+    botPlanId: string;
+    botOrderId?: string;
+    name: string;
+    username?: string;
+    planSlug?: string;
+  }): Promise<{ data: Bot | null; error: Error | null }> {
+    const cleanUsername = username
+      ? username.startsWith('@')
+        ? username
+        : `@${username}`
+      : `@${name.toLowerCase().replace(/[^a-z0-9]/g, '')}_bot`;
+    const cleanName = name || 'My Telegram Bot';
+
+    if (!isSupabaseConfigured) {
+      return {
+        data: {
+          id: 'bot_' + Math.random().toString(36).substring(2, 9),
+          userId,
+          botPlanId,
+          botOrderId,
+          name: cleanName,
+          username: cleanUsername,
+          status: 'Active',
+          planSlug,
+          planName: 'Purchased Bot',
+          planPriceDisplay: 'Active',
+          isConnected: true,
+          totalUsers: 0,
+          totalMessages: 0,
+          createdOn: new Date().toLocaleDateString('en-IN'),
+        },
+        error: null,
+      };
+    }
+
+    try {
+      const { data: botRecord, error } = await supabase
+        .from('bots')
+        .insert({
+          user_id: userId,
+          bot_plan_id: botPlanId,
+          bot_order_id: botOrderId || null,
+          name: cleanName,
+          username: cleanUsername,
+          status: 'Active',
+          plan_slug: planSlug,
+          is_connected: false,
+          avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${Date.now()}`,
+          channels_count: 0,
+          bonus_amount: 10.0,
+          refer_reward: 5.0,
+          total_users: 0,
+          total_messages: 0,
+        })
+        .select('*, bot_plans(name, price_display, slug)')
+        .single();
+
+      if (error) return { data: null, error };
+
+      // Initialize default settings
+      await supabase.from('bot_settings').upsert(
+        {
+          bot_id: botRecord.id,
+          welcome_message: `Welcome to ${cleanName}! Use /help to get started.`,
+          welcome_enabled: true,
+        },
+        { onConflict: 'bot_id' }
+      );
+
+      const mapped: Bot = {
+        id: botRecord.id,
+        userId: botRecord.user_id,
+        botPlanId: botRecord.bot_plan_id || undefined,
+        botOrderId: botRecord.bot_order_id || undefined,
+        name: botRecord.name,
+        username: botRecord.username,
+        status: botRecord.status,
+        planSlug: botRecord.plan_slug || (botRecord as any).bot_plans?.slug || 'basic',
+        planName: (botRecord as any).bot_plans?.name || 'Basic Bot',
+        planPriceDisplay: (botRecord as any).bot_plans?.price_display || '₹99',
+        isConnected: false,
+        totalUsers: 0,
+        totalMessages: 0,
+        createdOn: new Date(botRecord.created_at).toLocaleDateString('en-IN'),
+      };
+
+      return { data: mapped, error: null };
+    } catch (err: any) {
+      return { data: null, error: err };
+    }
+  },
+
+  /**
    * Get connected channels for a bot
    */
   async getBotChannels(botId: string): Promise<{ data: BotChannel[]; error: Error | null }> {

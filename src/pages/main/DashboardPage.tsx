@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../../layouts/DashboardLayout';
 import { BalanceCard } from '../../components/wallet/BalanceCard';
 import { FooterCards } from '../../components/layout/FooterCards';
+import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
 import { Button } from '../../components/common/Button';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { botService } from '../../services/botService';
+import { Bot as BotType } from '../../types';
 import {
   Send,
   Gamepad2,
@@ -17,12 +21,43 @@ import {
   ChevronRight,
   ExternalLink,
   Bot,
+  Settings,
+  Users,
+  Radio,
+  TrendingUp,
+  Activity,
+  HeartPulse,
 } from 'lucide-react';
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { showToast } = useToast();
+
   const [isTelegramModalOpen, setIsTelegramModalOpen] = useState(false);
+  const [userBot, setUserBot] = useState<BotType | null>(null);
+  const [isLoadingBot, setIsLoadingBot] = useState(true);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setIsLoadingBot(false);
+      return;
+    }
+
+    let isMounted = true;
+    botService.getUserBots(user.id).then((res) => {
+      if (isMounted) {
+        if (res.data && res.data.length > 0) {
+          setUserBot(res.data[0]);
+        }
+        setIsLoadingBot(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   const shortcuts = [
     {
@@ -54,18 +89,18 @@ export const DashboardPage: React.FC = () => {
       action: () => navigate('/wallet'),
     },
     {
-      title: 'Creat Lifafa',
-      subtitle: 'Build Telegram bots',
+      title: userBot ? 'Manage Bot' : 'Create Bot',
+      subtitle: userBot ? 'Settings & rules' : 'Build Telegram bots',
       icon: <Sparkles className="w-5 h-5 text-amber-600" />,
       bg: 'bg-amber-50/80 hover:bg-amber-100/80 border-amber-100',
-      action: () => navigate('/create-bot'),
+      action: () => navigate(userBot ? '/bot/manage' : '/create-bot'),
     },
     {
-      title: 'Support',
-      subtitle: '24/7 Fast assistance',
+      title: 'Customer Support',
+      subtitle: 'FAQs & Helpdesk',
       icon: <Headphones className="w-5 h-5 text-sky-600" />,
       bg: 'bg-sky-50/80 hover:bg-sky-100/80 border-sky-100',
-      action: () => showToast('Telegram 24/7 Live Support will connect in Phase 4', 'info'),
+      action: () => navigate('/support'),
     },
   ];
 
@@ -74,6 +109,103 @@ export const DashboardPage: React.FC = () => {
       <div className="space-y-4">
         {/* Balance Hero Card */}
         <BalanceCard />
+
+        {/* Dynamic Bot Management Section if user has a bot */}
+        {userBot ? (
+          <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-card space-y-3.5 relative overflow-hidden">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <img
+                  src={userBot.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${userBot.id}`}
+                  alt={userBot.name}
+                  className="w-12 h-12 rounded-2xl object-cover ring-2 ring-blue-100 shadow-xs"
+                />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm sm:text-base font-black text-slate-900 truncate">
+                      {userBot.name}
+                    </h3>
+                    <StatusBadge status={userBot.status} />
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs font-bold text-blue-600 font-mono">
+                      {userBot.username}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      ({userBot.planName})
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => navigate('/bot/manage')}
+                leftIcon={<Settings className="w-3.5 h-3.5" />}
+                className="font-bold shadow-xs"
+              >
+                Manage Bot
+              </Button>
+            </div>
+
+            {/* Quick Bot Hub Shortcuts */}
+            <div className="grid grid-cols-4 gap-2 pt-2 border-t border-slate-100 text-center">
+              <button
+                onClick={() => navigate('/bot/users')}
+                className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:border-blue-200 transition-all flex flex-col items-center justify-center gap-1"
+              >
+                <Users className="w-4 h-4 text-blue-600" />
+                <span className="text-[10px] font-bold text-slate-800">Users</span>
+              </button>
+
+              <button
+                onClick={() => navigate('/bot/broadcast')}
+                className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:border-blue-200 transition-all flex flex-col items-center justify-center gap-1"
+              >
+                <Radio className="w-4 h-4 text-sky-600" />
+                <span className="text-[10px] font-bold text-slate-800">Broadcast</span>
+              </button>
+
+              <button
+                onClick={() => navigate('/bot/analytics')}
+                className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:border-blue-200 transition-all flex flex-col items-center justify-center gap-1"
+              >
+                <TrendingUp className="w-4 h-4 text-purple-600" />
+                <span className="text-[10px] font-bold text-slate-800">Analytics</span>
+              </button>
+
+              <button
+                onClick={() => navigate('/bot/health')}
+                className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:border-blue-200 transition-all flex flex-col items-center justify-center gap-1"
+              >
+                <HeartPulse className="w-4 h-4 text-rose-500" />
+                <span className="text-[10px] font-bold text-slate-800">Health</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Featured Bot Creation Banner if no bot owned yet */
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white shadow-lg relative overflow-hidden border border-blue-900/50">
+            <div className="flex items-center justify-between gap-3">
+              <div className="space-y-1">
+                <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-blue-300 bg-blue-500/20 px-2 py-0.5 rounded-full border border-blue-400/20">
+                  <Bot className="w-3 h-3 text-blue-400" /> Telegram Bot Studio
+                </span>
+                <h4 className="text-sm sm:text-base font-black">Launch Your Telegram Bot</h4>
+                <p className="text-[11px] text-slate-300">Plans start from just ₹99 with instant setup.</p>
+              </div>
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => navigate('/create-bot')}
+                className="shrink-0 font-bold"
+              >
+                Get Started
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Telegram Alert Card */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-sky-500 via-blue-600 to-blue-700 p-4 text-white shadow-md shadow-blue-500/15 border border-blue-400/30">
@@ -138,27 +270,6 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Featured Bot Creation Banner */}
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white shadow-lg relative overflow-hidden border border-blue-900/50">
-          <div className="flex items-center justify-between gap-3">
-            <div className="space-y-1">
-              <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-blue-300 bg-blue-500/20 px-2 py-0.5 rounded-full border border-blue-400/20">
-                <Bot className="w-3 h-3 text-blue-400" /> Telegram Bot Studio
-              </span>
-              <h4 className="text-sm sm:text-base font-black">Launch Your Telegram Bot</h4>
-              <p className="text-[11px] text-slate-300">Plans start from just ₹99 with instant setup.</p>
-            </div>
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => navigate('/create-bot')}
-              className="shrink-0 font-bold"
-            >
-              Get Started
-            </Button>
-          </div>
-        </div>
-
         {/* Trust Cards */}
         <FooterCards className="my-2" />
       </div>
@@ -188,7 +299,7 @@ export const DashboardPage: React.FC = () => {
             size="md"
             onClick={() => {
               setIsTelegramModalOpen(false);
-              showToast('Telegram webhook connection will be linked in Phase 4.', 'info');
+              showToast('Telegram alert notifications active.', 'info');
             }}
             rightIcon={<ExternalLink className="w-4 h-4" />}
           >

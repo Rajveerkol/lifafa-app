@@ -10,6 +10,8 @@ import {
   ShieldCheck,
   Sparkles,
   Clock,
+  Settings,
+  LayoutDashboard,
 } from 'lucide-react';
 
 export const BotSuccessPage: React.FC = () => {
@@ -31,13 +33,13 @@ export const BotSuccessPage: React.FC = () => {
           </div>
           <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider bg-white/20 px-2.5 py-0.5 rounded-full backdrop-blur-xs border border-white/20 mb-2">
             <Sparkles className="w-3 h-3 text-amber-300" />
-            Order Confirmed
+            Order Confirmed & Activated
           </span>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-            Bot Order Placed!
+            Bot Ready to Manage!
           </h1>
           <p className="text-xs text-emerald-100 mt-1 max-w-xs mx-auto leading-relaxed">
-            Your bot order has been recorded successfully in the database.
+            Your bot package has been activated. You can now configure channels, automation rules, broadcast, and custom menus.
           </p>
         </div>
 
@@ -51,7 +53,7 @@ export const BotSuccessPage: React.FC = () => {
               </h3>
             </div>
             <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
-              {mode === 'wallet' ? 'Paid via Wallet' : 'Order Recorded'}
+              {mode === 'wallet' ? 'Paid via Wallet' : 'Order Confirmed'}
             </span>
           </div>
 
@@ -62,12 +64,12 @@ export const BotSuccessPage: React.FC = () => {
             </div>
 
             <div className="flex justify-between items-center py-1">
-              <span className="text-slate-500">Bot Plan</span>
+              <span className="text-slate-500">Bot Package</span>
               <span className="font-bold text-slate-900">{planName}</span>
             </div>
 
             <div className="flex justify-between items-center py-1">
-              <span className="text-slate-500">Total Amount</span>
+              <span className="text-slate-500">Total Paid</span>
               <span className="text-base font-black text-blue-600">₹{amount}.00</span>
             </div>
 
@@ -84,38 +86,39 @@ export const BotSuccessPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Phase 4 Telegram Provisioning Notice */}
+        {/* Instant Management Notice */}
         <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200/70 text-blue-900 space-y-1.5">
           <div className="flex items-center gap-2">
             <Bot className="w-4 h-4 text-blue-600 shrink-0" />
-            <h4 className="text-xs font-bold">Telegram Bot Engine Notice</h4>
+            <h4 className="text-xs font-bold">Bot Control Center Ready</h4>
           </div>
           <p className="text-[11px] text-blue-700 leading-relaxed">
-            Your bot purchase order is secured in your account. Live Telegram Bot API webhook linking and server-side bot engine provisioning will be connected in <strong>Phase 4</strong>.
+            Head to the <strong>Manage Bot</strong> console to link your BotFather token, configure custom reply buttons, set up channel subscription locks, and send broadcasts.
           </p>
         </div>
 
-        {/* Actions */}
-        <div className="space-y-2 pt-1">
+        {/* Primary & Secondary Actions */}
+        <div className="space-y-2.5 pt-1">
           <Button
             fullWidth
             size="lg"
             variant="primary"
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/bot/manage')}
+            leftIcon={<Settings className="w-4 h-4" />}
             rightIcon={<ArrowRight className="w-4 h-4" />}
           >
-            Go to Dashboard
+            Manage My Bot
           </Button>
 
           <Button
             fullWidth
             size="md"
-            variant="ghost"
-            onClick={() => navigate('/wallet')}
-            leftIcon={<Receipt className="w-4 h-4" />}
-            className="text-slate-600 hover:bg-slate-100"
+            variant="outline"
+            onClick={() => navigate('/dashboard')}
+            leftIcon={<LayoutDashboard className="w-4 h-4" />}
+            className="border-slate-200 text-slate-700 hover:bg-slate-50 font-bold"
           >
-            View Wallet & Transactions
+            Go to Dashboard
           </Button>
         </div>
 
@@ -125,7 +128,7 @@ export const BotSuccessPage: React.FC = () => {
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Secure Database Record
           </span>
           <span className="inline-flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5 text-blue-500" /> Instant Processing
+            <Clock className="w-3.5 h-3.5 text-blue-500" /> Instant Provisioning
           </span>
         </div>
       </div>

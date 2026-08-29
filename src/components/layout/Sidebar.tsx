@@ -13,6 +13,7 @@ import {
   Shield,
   LogOut,
   ChevronRight,
+  Sparkles,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -36,10 +37,12 @@ export const Sidebar: React.FC = () => {
 
   const mainLinks = [
     { label: 'Home', path: '/dashboard', icon: Home },
+    { label: 'Manage Bot', path: '/bot/manage', icon: Bot },
+    { label: 'Create Bot', path: '/create-bot', icon: Sparkles },
     { label: 'My Wallet', path: '/wallet', icon: Wallet },
-    { label: 'Create Bot', path: '/create-bot', icon: Bot },
     { label: 'Games', path: '/games', icon: Gamepad2 },
     { label: 'Refer & Earn', path: '/referral', icon: Share2 },
+    { label: 'Customer Support', path: '/support', icon: Headphones },
     { label: 'Profile', path: '/profile', icon: User },
   ];
 

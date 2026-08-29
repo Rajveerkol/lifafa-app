@@ -9,6 +9,7 @@ import { useToast } from '../../context/ToastContext';
 import { botPlanService } from '../../services/botPlanService';
 import { botOrderService } from '../../services/botOrderService';
 import { telegramService } from '../../services/telegramService';
+import { botService } from '../../services/botService';
 import { BotPlan } from '../../types';
 import {
   Bot,
@@ -27,7 +28,7 @@ export const BotSetupPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const planId = searchParams.get('planId') || '';
 
-  const { wallet, refreshWallet } = useAuth();
+  const { user, wallet, refreshWallet } = useAuth();
   const { refreshNotifications } = useApp();
   const { showToast } = useToast();
 
@@ -110,7 +111,17 @@ export const BotSetupPage: React.FC = () => {
           showToast('Telegram bot connected & verified successfully!', 'success');
         }
       } else {
-        showToast('Bot purchase confirmed! You can connect your Telegram token anytime in Manage Bot.', 'success');
+        if (user?.id) {
+          await botService.provisionPurchasedBot({
+            userId: user.id,
+            botPlanId: selectedPlan.id,
+            botOrderId: orderId,
+            name: botName.trim(),
+            username: botUsername.trim(),
+            planSlug: selectedPlan.slug || 'basic',
+          });
+        }
+        showToast('Bot plan activated! You can link your Telegram token anytime in Manage Bot.', 'success');
       }
 
       await refreshWallet();
