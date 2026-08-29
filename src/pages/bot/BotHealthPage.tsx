@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { botService } from '../../services/botService';
 import { botHealthService } from '../../services/botHealthService';
+import { telegramService } from '../../services/telegramService';
 import { Bot, BotHealth } from '../../types';
 import {
   ChevronLeft,
@@ -22,6 +23,7 @@ import {
   ShieldCheck,
   PowerOff,
   Sparkles,
+  AlertCircle,
 } from 'lucide-react';
 
 export const BotHealthPage: React.FC = () => {
@@ -34,6 +36,8 @@ export const BotHealthPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isTesting, setIsTesting] = useState(false);
   const [latencyResult, setLatencyResult] = useState<number | null>(null);
+  const [tokenInput, setTokenInput] = useState('');
+  const [isConnectingToken, setIsConnectingToken] = useState(false);
 
   const fetchHealthData = useCallback(async () => {
     if (!user?.id) return;
@@ -67,11 +71,39 @@ export const BotHealthPage: React.FC = () => {
           `Telegram connection verified! API Response Latency: ${res.latencyMs || 120}ms`,
           'success'
         );
+        await fetchHealthData();
       } else {
         showToast(res.error || 'Connection check encountered an error.', 'error');
       }
     } finally {
       setIsTesting(false);
+    }
+  };
+
+  const handleLinkToken = async () => {
+    if (!bot?.id || !tokenInput.trim().includes(':')) {
+      showToast('Please enter a valid BotFather token.', 'warning');
+      return;
+    }
+
+    setIsConnectingToken(true);
+    try {
+      const res = await telegramService.connectBot({
+        botName: bot.name,
+        planId: bot.botPlanId,
+        planSlug: bot.planSlug,
+        token: tokenInput.trim(),
+      });
+
+      if (res.success) {
+        showToast('Telegram bot connected & health verified!', 'success');
+        setTokenInput('');
+        await fetchHealthData();
+      } else {
+        showToast(res.error || 'Token connection failed.', 'error');
+      }
+    } finally {
+      setIsConnectingToken(false);
     }
   };
 
@@ -114,6 +146,41 @@ export const BotHealthPage: React.FC = () => {
             Test Connection
           </Button>
         </div>
+
+        {/* Quick Token Connector if Disconnected */}
+        {health.telegramConnection !== 'CONNECTED' && (
+          <div className="p-4 rounded-3xl bg-amber-50/90 border border-amber-200 shadow-xs space-y-3">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-xs font-black text-amber-900">
+                  Connect Official Telegram Bot API
+                </h4>
+                <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                  To activate Telegram API and Webhook engine, enter your BotFather token below:
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="password"
+                placeholder="e.g. 8755988538:AAHW..."
+                value={tokenInput}
+                onChange={(e) => setTokenInput(e.target.value)}
+                className="flex-1 px-3 py-2 bg-white border border-amber-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono"
+              />
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={handleLinkToken}
+                isLoading={isConnectingToken}
+                className="bg-amber-600 hover:bg-amber-700 font-bold shrink-0 text-xs"
+              >
+                Verify & Connect
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Health Status Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
