@@ -9,6 +9,7 @@ import { PlanUpgradeModal } from '../../components/bot/PlanUpgradeModal';
 import { SubscriberDetailsModal } from '../../components/bot/SubscriberDetailsModal';
 import { LoadingState } from '../../components/common/LoadingState';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { botService } from '../../services/botService';
 import { botUserService } from '../../services/botUserService';
 import { planFeatureService, PlanSlug } from '../../services/planFeatureService';
@@ -23,11 +24,13 @@ import {
   UserCheck,
   Calendar,
   Sparkles,
+  RotateCw,
 } from 'lucide-react';
 
 export const BotUsersPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { showToast } = useToast();
 
   const [bot, setBot] = useState<Bot | null>(null);
   const [subscribers, setSubscribers] = useState<BotUser[]>([]);
@@ -36,6 +39,7 @@ export const BotUsersPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'new'>('all');
   const [selectedSubscriber, setSelectedSubscriber] = useState<BotUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [upgradeTargetFeature, setUpgradeTargetFeature] = useState<string | undefined>(undefined);
@@ -48,6 +52,9 @@ export const BotUsersPage: React.FC = () => {
       if (botsRes.data && botsRes.data.length > 0) {
         const currentBot = botsRes.data[0];
         setBot(currentBot);
+
+        // Auto sync telegram updates on load
+        await botUserService.syncSubscribersFromTelegram(currentBot.id);
 
         const usersRes = await botUserService.getBotUsers(
           currentBot.id,
@@ -66,6 +73,24 @@ export const BotUsersPage: React.FC = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleSync = async () => {
+    if (!bot?.id) return;
+    setIsSyncing(true);
+    try {
+      const res = await botUserService.syncSubscribersFromTelegram(bot.id);
+      if (res.success) {
+        showToast(`Synced! Found ${res.total} total Telegram subscribers.`, 'success');
+        await fetchData();
+      } else {
+        showToast(res.error || 'Sync completed.', 'info');
+      }
+    } catch {
+      showToast('Sync failed.', 'error');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const planSlug = (bot?.planSlug || 'basic') as PlanSlug;
   const hasUserList = planFeatureService.hasFeature(planSlug, 'user_list');
@@ -106,9 +131,21 @@ export const BotUsersPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-black border border-blue-200">
-            <Users className="w-3.5 h-3.5" />
-            <span>{totalCount.toLocaleString()} Total</span>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleSync}
+              isLoading={isSyncing}
+              leftIcon={<RotateCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />}
+              className="font-bold border-blue-200 text-blue-700 bg-blue-50/50 shadow-2xs h-8 text-xs"
+            >
+              Sync Telegram
+            </Button>
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-black border border-blue-200">
+              <Users className="w-3.5 h-3.5" />
+              <span>{totalCount.toLocaleString()} Total</span>
+            </div>
           </div>
         </div>
 

@@ -92,11 +92,11 @@ export const BotBroadcastPage: React.FC = () => {
       );
 
       if (res.error) {
-        showToast(res.error.message || 'Failed to create broadcast.', 'error');
+        showToast(res.error.message || 'Failed to send broadcast.', 'error');
         return;
       }
 
-      showToast('Broadcast job queued and worker dispatched successfully!', 'success');
+      showToast(`Broadcast delivered successfully to ${res.data?.sent_count || 0} subscriber(s)!`, 'success');
       setMessage('');
       setButtonText('');
       setButtonUrl('');
