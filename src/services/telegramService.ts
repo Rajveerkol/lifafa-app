@@ -132,6 +132,13 @@ export const telegramService = {
         }
       }
 
+      if (savedBot?.id) {
+        try {
+          localStorage.setItem(`tg_token_${savedBot.id}`, rawToken);
+          localStorage.setItem('tg_token_current', rawToken);
+        } catch {}
+      }
+
       const botResult: Bot = {
         id: savedBot?.id || 'bot_' + (telegramBotId || 'live'),
         userId: user?.id || '',

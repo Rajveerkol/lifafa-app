@@ -18,12 +18,17 @@ export const botUserService = {
         return { success: false, count: 0, total: 0, error: 'Bot not found.' };
       }
 
-      const token = bot.encrypted_token;
+      const token =
+        bot?.encrypted_token ||
+        (typeof window !== 'undefined'
+          ? localStorage.getItem(`tg_token_${botId}`) || localStorage.getItem('tg_token_current')
+          : null);
+
       if (!token || !token.includes(':')) {
         return {
           success: false,
           count: 0,
-          total: bot.total_users || 0,
+          total: bot?.total_users || 0,
           error: 'Bot token not configured. Please link your BotFather token in Manage Bot.',
         };
       }

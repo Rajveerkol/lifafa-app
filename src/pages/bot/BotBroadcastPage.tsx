@@ -12,6 +12,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { botService } from '../../services/botService';
 import { broadcastService } from '../../services/broadcastService';
+import { telegramService } from '../../services/telegramService';
 import { planFeatureService, PlanSlug } from '../../services/planFeatureService';
 import { Bot, BotBroadcast } from '../../types';
 import {
@@ -39,6 +40,7 @@ export const BotBroadcastPage: React.FC = () => {
   const [buttonText, setButtonText] = useState('');
   const [buttonUrl, setButtonUrl] = useState('');
   const [targetAudience, setTargetAudience] = useState<'all' | 'active' | 'new' | 'inactive'>('all');
+  const [quickToken, setQuickToken] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -168,6 +170,60 @@ export const BotBroadcastPage: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Quick Token Connector Banner if token not connected */}
+            {!bot.isConnected && (
+              <div className="p-4 rounded-3xl bg-amber-50/80 border border-amber-200/80 shadow-xs space-y-3">
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-xs font-black text-amber-900">
+                      Link Telegram Bot Token
+                    </h4>
+                    <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                      To send broadcasts directly to your subscribers, paste your BotFather token below:
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    placeholder="e.g. 8755988538:AAH..."
+                    value={quickToken}
+                    onChange={(e) => setQuickToken(e.target.value)}
+                    className="flex-1 px-3 py-2 bg-white border border-amber-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono"
+                  />
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={async () => {
+                      if (!quickToken.trim().includes(':')) {
+                        showToast('Please enter a valid BotFather token.', 'warning');
+                        return;
+                      }
+                      setIsSubmitting(true);
+                      const res = await telegramService.connectBot({
+                        botName: bot.name,
+                        planId: bot.botPlanId,
+                        planSlug: planSlug,
+                        token: quickToken.trim(),
+                      });
+                      if (res.success) {
+                        showToast('Telegram bot token connected successfully!', 'success');
+                        setQuickToken('');
+                        await fetchData();
+                      } else {
+                        showToast(res.error || 'Token verification failed.', 'error');
+                      }
+                      setIsSubmitting(false);
+                    }}
+                    className="bg-amber-600 hover:bg-amber-700 font-bold shrink-0 text-xs"
+                  >
+                    Save & Link
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Broadcast Composer */}
             <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-card space-y-4">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 px-1">

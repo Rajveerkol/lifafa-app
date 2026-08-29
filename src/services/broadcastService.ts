@@ -25,11 +25,16 @@ export const broadcastService = {
         return { data: null, error: new Error('Bot not found.') };
       }
 
-      const token = bot.encrypted_token;
+      const token =
+        bot?.encrypted_token ||
+        (typeof window !== 'undefined'
+          ? localStorage.getItem(`tg_token_${botId}`) || localStorage.getItem('tg_token_current')
+          : null);
+
       if (!token || !token.includes(':')) {
         return {
           data: null,
-          error: new Error('Bot token is not linked. Please reconnect your BotFather token in Manage Bot first.'),
+          error: new Error('Bot token is not linked. Please paste your BotFather token in Manage Bot to connect Telegram API.'),
         };
       }
 
