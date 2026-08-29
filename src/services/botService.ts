@@ -17,37 +17,63 @@ export const botService = {
         return { data: [], error };
       }
 
-    const mapped: Bot[] = (data as any[]).map((row) => ({
-      id: row.id,
-      userId: row.user_id,
-      botPlanId: row.bot_plan_id,
-      botOrderId: row.bot_order_id,
-      name: row.name,
-      username: row.username,
-      telegramBotId: row.telegram_bot_id,
-      status: row.status,
-      planSlug: row.plan_slug || row.bot_plans?.slug || 'basic',
-      planName: row.bot_plans?.name || 'Basic Bot',
-      planPriceDisplay: row.bot_plans?.price_display || '₹99',
-      isConnected: row.is_connected ?? true,
-      avatarUrl: row.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${row.id}`,
-      qrCodeUrl: row.qr_code_url,
-      channelsCount: row.channels_count || 0,
-      bonusAmount: Number(row.bonus_amount || 10),
-      referReward: Number(row.refer_reward || 5),
-      totalUsers: row.total_users || 0,
-      totalMessages: row.total_messages || 0,
-      createdOn: new Date(row.created_at).toLocaleDateString('en-IN', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      }),
-      lastSyncedAt: row.last_synced_at,
-    }));
+      const mapped: Bot[] = (data as any[]).map((row) => {
+        const slug = (row.plan_slug || row.bot_plans?.slug || 'basic').toLowerCase();
+        return {
+          id: row.id,
+          userId: row.user_id,
+          botPlanId: row.bot_plan_id || undefined,
+          botOrderId: row.bot_order_id || undefined,
+          name: row.name,
+          username: row.username,
+          telegramBotId: row.telegram_bot_id || undefined,
+          status: row.status,
+          planSlug: slug,
+          planName: row.bot_plans?.name || (slug === 'ultimate' ? 'Ultimate Bot' : slug === 'pro' ? 'Pro Bot' : slug === 'growth' ? 'Growth Bot' : slug === 'premium' ? 'Premium Bot' : 'Basic Bot'),
+          planPriceDisplay: row.bot_plans?.price_display || (slug === 'ultimate' ? '₹2,999' : slug === 'pro' ? '₹999' : slug === 'growth' ? '₹699' : slug === 'premium' ? '₹1,599' : '₹99'),
+          isConnected: row.is_connected ?? true,
+          avatarUrl: row.avatar_url || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80',
+          qrCodeUrl: row.qr_code_url,
+          channelsCount: row.channels_count || 0,
+          bonusAmount: Number(row.bonus_amount || 10),
+          referReward: Number(row.refer_reward || 5),
+          totalUsers: row.total_users || 0,
+          totalMessages: row.total_messages || 0,
+          createdOn: new Date(row.created_at).toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          }),
+          lastSyncedAt: row.last_synced_at,
+        };
+      });
 
       return { data: mapped, error: null };
     } catch (err: any) {
       return { data: [], error: err };
+    }
+  },
+
+  /**
+   * Directly upgrade or switch bot tier
+   */
+  async upgradeBotPlan(
+    botId: string,
+    planSlug: string
+  ): Promise<{ success: boolean; error: Error | null }> {
+    try {
+      const { error } = await supabase
+        .from('bots')
+        .update({
+          plan_slug: planSlug,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', botId);
+
+      if (error) return { success: false, error };
+      return { success: true, error: null };
+    } catch (err: any) {
+      return { success: false, error: err };
     }
   },
 

@@ -140,13 +140,32 @@ export const BotBroadcastPage: React.FC = () => {
 
         {/* Feature Lock Check */}
         {!hasBroadcast ? (
-          <LockedFeatureCard
-            title="Broadcast Messaging Engine"
-            description="Push mass announcements to your bot subscribers with rate-limit protection and real-time delivery tracking."
-            minPlanName="Pro Bot"
-            minPriceDisplay="₹999"
-            onUpgrade={() => setUpgradeModalOpen(true)}
-          />
+          <div className="space-y-3">
+            <LockedFeatureCard
+              title="Broadcast Messaging Engine"
+              description="Push mass announcements to your bot subscribers with rate-limit protection and real-time delivery tracking."
+              minPlanName="Pro Bot"
+              minPriceDisplay="₹999"
+              onUpgrade={() => setUpgradeModalOpen(true)}
+            />
+            {bot?.id && (
+              <div className="p-4 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl border border-purple-200 text-center space-y-2">
+                <p className="text-xs font-bold text-purple-900">Already purchased Ultimate / Pro Bot?</p>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={async () => {
+                    await botService.upgradeBotPlan(bot.id, 'ultimate');
+                    showToast('Ultimate Plan activated! Broadcast engine is now unlocked.', 'success');
+                    await fetchData();
+                  }}
+                  className="bg-gradient-to-r from-purple-600 to-indigo-600 font-bold"
+                >
+                  ⚡ Activate Ultimate Plan (Unlock Now)
+                </Button>
+              </div>
+            )}
+          </div>
         ) : (
           <div className="space-y-4">
             {/* Broadcast Composer */}

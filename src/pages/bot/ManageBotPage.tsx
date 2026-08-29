@@ -310,7 +310,7 @@ export const ManageBotPage: React.FC = () => {
           </div>
 
           {/* Plan Status Banner */}
-          <div className="mt-4 p-3 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 flex items-center justify-between gap-3">
+          <div className="mt-4 p-3.5 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <span className="text-[10px] uppercase font-bold text-slate-500 block">
                 Active Package
@@ -319,8 +319,24 @@ export const ManageBotPage: React.FC = () => {
                 {bot.planName} ({bot.planPriceDisplay})
               </span>
             </div>
-            <div className="text-right">
-              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100/80 px-2.5 py-0.5 rounded-full border border-emerald-200">
+            <div className="flex items-center gap-2 flex-wrap">
+              {planSlug !== 'ultimate' && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setIsSubmitting(true);
+                    await botService.upgradeBotPlan(bot.id, 'ultimate');
+                    showToast('Bot plan upgraded to Ultimate Plan (₹2,999)! All 19 features unlocked.', 'success');
+                    setIsSubmitting(false);
+                    await fetchBotData();
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black text-[11px] shadow-xs flex items-center gap-1.5 transition-transform active:scale-95"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Activate Ultimate Plan (₹2,999)</span>
+                </button>
+              )}
+              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100/80 px-2.5 py-1 rounded-full border border-emerald-200">
                 {unlockedCount} / 19 Features Unlocked
               </span>
             </div>
