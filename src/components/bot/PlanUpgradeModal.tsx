@@ -30,7 +30,7 @@ export const PlanUpgradeModal: React.FC<PlanUpgradeModalProps> = ({
 
   const handleProceed = () => {
     onClose();
-    navigate('/create-bot');
+    navigate(`/create-bot/setup?plan=plan_${targetPlanSlug}&slug=${targetPlanSlug}`);
   };
 
   return (

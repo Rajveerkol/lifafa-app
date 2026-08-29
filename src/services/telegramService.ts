@@ -4,6 +4,7 @@ import { Bot } from '../types';
 export interface ConnectBotParams {
   orderId?: string;
   planId?: string;
+  planSlug?: string;
   botName: string;
   token: string;
 }
@@ -16,7 +17,7 @@ export interface ConnectBotResponse {
 
 export const telegramService = {
   /**
-   * Connect and verify Telegram bot authoritatively (with direct Telegram getMe verification fallback)
+   * Connect and verify Telegram bot authoritatively (with direct Telegram getMe API token verification fallback)
    */
   async connectBot(params: ConnectBotParams): Promise<ConnectBotResponse> {
     const rawToken = params.token ? params.token.trim() : '';
@@ -42,7 +43,7 @@ export const telegramService = {
           };
         }
       } catch (tgErr: any) {
-        console.warn('Direct Telegram fetch error, will try Edge function:', tgErr);
+        console.warn('Direct Telegram fetch error, proceeding with database link:', tgErr);
       }
 
       // 2. If Edge Function is deployed, also notify backend
@@ -51,6 +52,7 @@ export const telegramService = {
           body: {
             order_id: params.orderId,
             plan_id: params.planId,
+            plan_slug: params.planSlug,
             bot_name: tgBotData?.first_name || params.botName,
             token: rawToken,
           },
@@ -65,11 +67,12 @@ export const telegramService = {
       const botDisplayName = tgBotData?.first_name || params.botName || 'Telegram Bot';
       const botUsername = tgBotData?.username ? `@${tgBotData.username}` : `@${botDisplayName.toLowerCase().replace(/[^a-z0-9]/g, '')}_bot`;
       const telegramBotId = tgBotData ? String(tgBotData.id) : undefined;
+      const targetPlanSlug = params.planSlug || 'basic';
 
       let savedBot: any = null;
 
       if (user?.id) {
-        // Check if bot with same telegram_bot_id or username exists for user
+        // Check if user already has a bot in the bots table
         const { data: existingBots } = await supabase
           .from('bots')
           .select('*')
@@ -84,6 +87,9 @@ export const telegramService = {
               username: botUsername,
               telegram_bot_id: telegramBotId || existingBots[0].telegram_bot_id,
               status: 'Active',
+              plan_slug: targetPlanSlug !== 'basic' ? targetPlanSlug : (existingBots[0].plan_slug || 'basic'),
+              bot_plan_id: params.planId || existingBots[0].bot_plan_id,
+              bot_order_id: params.orderId || existingBots[0].bot_order_id,
               is_connected: true,
               encrypted_token: rawToken,
               last_synced_at: new Date().toISOString(),
@@ -107,7 +113,7 @@ export const telegramService = {
               username: botUsername,
               telegram_bot_id: telegramBotId,
               status: 'Active',
-              plan_slug: 'basic',
+              plan_slug: targetPlanSlug,
               is_connected: true,
               encrypted_token: rawToken,
               avatar_url: `https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80`,
@@ -133,9 +139,9 @@ export const telegramService = {
         username: botUsername,
         telegramBotId: telegramBotId,
         status: 'Active',
-        planSlug: savedBot?.plan_slug || 'basic',
-        planName: savedBot?.bot_plans?.name || 'Basic Bot',
-        planPriceDisplay: savedBot?.bot_plans?.price_display || '₹99',
+        planSlug: savedBot?.plan_slug || targetPlanSlug,
+        planName: savedBot?.bot_plans?.name || 'Telegram Bot',
+        planPriceDisplay: savedBot?.bot_plans?.price_display || 'Active',
         isConnected: true,
         avatarUrl: savedBot?.avatar_url || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80',
         totalUsers: savedBot?.total_users || 0,

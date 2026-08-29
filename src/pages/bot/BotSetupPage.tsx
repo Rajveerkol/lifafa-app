@@ -109,6 +109,7 @@ export const BotSetupPage: React.FC = () => {
         const connectRes = await telegramService.connectBot({
           orderId,
           planId: selectedPlan.id,
+          planSlug: selectedPlan.slug,
           botName: botName.trim(),
           token: telegramToken.trim(),
         });

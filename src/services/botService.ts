@@ -148,30 +148,61 @@ export const botService = {
     }
 
     try {
-      const { data: botRecord, error } = await supabase
+      // Check if user already has a bot in the bots table
+      const { data: existingBots } = await supabase
         .from('bots')
-        .insert({
-          user_id: userId,
-          bot_plan_id: botPlanId,
-          bot_order_id: botOrderId || null,
-          name: cleanName,
-          username: cleanUsername,
-          status: 'Active',
-          plan_slug: planSlug,
-          is_connected: false,
-          avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${Date.now()}`,
-          channels_count: 0,
-          bonus_amount: 10.0,
-          refer_reward: 5.0,
-          total_users: 0,
-          total_messages: 0,
-        })
-        .select('*, bot_plans(name, price_display, slug)')
-        .single();
+        .select('*')
+        .eq('user_id', userId)
+        .limit(1);
 
-      if (error) return { data: null, error };
+      let botRecord: any = null;
 
-      // Initialize default settings
+      if (existingBots && existingBots.length > 0) {
+        // Upgrade existing bot's plan and attributes
+        const { data: updated, error: updateError } = await supabase
+          .from('bots')
+          .update({
+            bot_plan_id: botPlanId,
+            bot_order_id: botOrderId || existingBots[0].bot_order_id,
+            plan_slug: planSlug,
+            name: cleanName || existingBots[0].name,
+            username: cleanUsername || existingBots[0].username,
+            status: 'Active',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingBots[0].id)
+          .select('*, bot_plans(name, price_display, slug)')
+          .single();
+
+        if (updateError) return { data: null, error: updateError };
+        botRecord = updated;
+      } else {
+        const { data: inserted, error: insertError } = await supabase
+          .from('bots')
+          .insert({
+            user_id: userId,
+            bot_plan_id: botPlanId,
+            bot_order_id: botOrderId || null,
+            name: cleanName,
+            username: cleanUsername,
+            status: 'Active',
+            plan_slug: planSlug,
+            is_connected: false,
+            avatar_url: `https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80`,
+            channels_count: 0,
+            bonus_amount: 10.0,
+            refer_reward: 5.0,
+            total_users: 0,
+            total_messages: 0,
+          })
+          .select('*, bot_plans(name, price_display, slug)')
+          .single();
+
+        if (insertError) return { data: null, error: insertError };
+        botRecord = inserted;
+      }
+
+      // Initialize default settings if needed
       await supabase.from('bot_settings').upsert(
         {
           bot_id: botRecord.id,
