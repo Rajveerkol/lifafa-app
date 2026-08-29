@@ -6,40 +6,16 @@ export const botService = {
    * Get all bots owned by user
    */
   async getUserBots(userId: string): Promise<{ data: Bot[]; error: Error | null }> {
-    if (!isSupabaseConfigured) {
-      return {
-        data: [
-          {
-            id: 'bot_demo_1',
-            name: 'Creatlifafa Official Bot',
-            username: '@Creatlifafa_bot',
-            telegramBotId: '7689123456',
-            status: 'Active',
-            planSlug: 'basic',
-            planName: 'Basic Bot',
-            planPriceDisplay: '₹99',
-            avatarUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80',
-            isConnected: true,
-            totalUsers: 1420,
-            totalMessages: 8940,
-            createdOn: '24 Aug 2026',
-            bonusAmount: 10,
-            referReward: 5,
-          },
-        ],
-        error: null,
-      };
-    }
+    try {
+      const { data, error } = await supabase
+        .from('bots')
+        .select('*, bot_plans(name, price_display, slug)')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
 
-    const { data, error } = await supabase
-      .from('bots')
-      .select('*, bot_plans(name, price_display, slug)')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (error || !data) {
-      return { data: [], error };
-    }
+      if (error || !data) {
+        return { data: [], error };
+      }
 
     const mapped: Bot[] = (data as any[]).map((row) => ({
       id: row.id,
@@ -69,7 +45,10 @@ export const botService = {
       lastSyncedAt: row.last_synced_at,
     }));
 
-    return { data: mapped, error: null };
+      return { data: mapped, error: null };
+    } catch (err: any) {
+      return { data: [], error: err };
+    }
   },
 
   /**

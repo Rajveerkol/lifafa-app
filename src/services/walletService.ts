@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { Database } from '../types/database.types';
 
 export type WalletRow = Database['public']['Tables']['wallets']['Row'];
@@ -15,36 +15,24 @@ export interface WithdrawalResult {
 
 export const walletService = {
   /**
-   * Fetch current user's wallet record
+   * Fetch current real user's wallet record from Supabase
    */
   async getWallet(userId: string): Promise<{ data: WalletRow | null; error: Error | null }> {
-    if (!isSupabaseConfigured) {
-      return {
-        data: {
-          id: 'wal_local_demo',
-          user_id: userId,
-          balance: 0.00,
-          total_withdrawn: 0.00,
-          total_deposited: 0.00,
-          currency: 'INR',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        error: null,
-      };
+    try {
+      const { data, error } = await supabase
+        .from('wallets')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      return { data: (data as WalletRow) || null, error };
+    } catch (err: any) {
+      return { data: null, error: err };
     }
-
-    const { data, error } = await supabase
-      .from('wallets')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
-
-    return { data: (data as WalletRow) || null, error };
   },
 
   /**
-   * Submit withdrawal request via atomic RPC function
+   * Submit withdrawal request via atomic PostgreSQL RPC function
    */
   async requestWithdrawal(
     amount: number,
@@ -52,22 +40,6 @@ export const walletService = {
   ): Promise<{ data: WithdrawalResult | null; error: Error | null }> {
     if (!amount || amount < 50) {
       return { data: null, error: new Error('Minimum withdrawal amount is ₹50.00') };
-    }
-
-    if (!isSupabaseConfigured) {
-      const mockRef = 'WDL/' + Math.random().toString(36).substring(2, 9).toUpperCase();
-      return {
-        data: {
-          success: true,
-          withdrawalId: 'wdl_demo_1',
-          transactionId: 'tx_demo_1',
-          referenceId: mockRef,
-          amount,
-          newBalance: 0,
-          status: 'pending',
-        },
-        error: null,
-      };
     }
 
     try {
