@@ -274,8 +274,11 @@ export const ManageBotPage: React.FC = () => {
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <img
-                src={bot.avatarUrl}
+                src={bot.avatarUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80'}
                 alt={bot.name}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80';
+                }}
                 className="w-12 h-12 rounded-2xl object-cover ring-2 ring-blue-100 shadow-xs"
               />
               <div>

@@ -18,6 +18,7 @@ export const botService = {
             planSlug: 'basic',
             planName: 'Basic Bot',
             planPriceDisplay: '₹99',
+            avatarUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80',
             isConnected: true,
             totalUsers: 1420,
             totalMessages: 8940,
