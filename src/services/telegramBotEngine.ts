@@ -40,7 +40,7 @@ export const telegramBotEngine = {
         };
       }
 
-      // 2. Clear any lingering webhook conflict on Telegram servers so getUpdates returns full queue
+      // 2. Clear any lingering webhook conflict on Telegram servers
       try {
         await fetch(`https://api.telegram.org/bot${token}/deleteWebhook?drop_pending_updates=false`);
       } catch (e) {
@@ -48,7 +48,7 @@ export const telegramBotEngine = {
       }
 
       // 3. Fetch Telegram updates
-      const tgRes = await fetch(`https://api.telegram.org/bot${token}/getUpdates?offset=-50&limit=50`);
+      const tgRes = await fetch(`https://api.telegram.org/bot${token}/getUpdates?limit=100`);
       const tgJson = await tgRes.json();
 
       if (!tgJson.ok || !Array.isArray(tgJson.result)) {
@@ -146,16 +146,18 @@ export const telegramBotEngine = {
                 .replace(/{username}/g, fromUser?.username ? `@${fromUser.username}` : '')
                 .replace(/{bot_name}/g, bot.name);
 
-              await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+              const tgSendRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   chat_id: chatId,
                   text: formattedReply,
-                  parse_mode: 'HTML',
                 }),
               });
-              processedCount++;
+              const tgSendJson = await tgSendRes.json();
+              if (tgSendJson.ok) {
+                processedCount++;
+              }
             } catch (sendErr) {
               console.warn('Auto-reply sendMessage error:', sendErr);
             }
@@ -163,7 +165,14 @@ export const telegramBotEngine = {
         }
       }
 
-      // 6. Upsert discovered subscribers into database
+      // 6. Acknowledge processed updates so they don't repeat endlessly
+      if (highestUpdateId > 0) {
+        try {
+          await fetch(`https://api.telegram.org/bot${token}/getUpdates?offset=${highestUpdateId + 1}&limit=1`);
+        } catch {}
+      }
+
+      // 7. Upsert discovered subscribers into database
       let newUsersCount = 0;
       for (const [tgId, u] of userMap.entries()) {
         await supabase.from('bot_users').upsert(
@@ -181,7 +190,7 @@ export const telegramBotEngine = {
         newUsersCount++;
       }
 
-      // 7. Update total subscribers on bots table
+      // 8. Update total subscribers on bots table
       const { count: totalUsers } = await supabase
         .from('bot_users')
         .select('*', { count: 'exact', head: true })

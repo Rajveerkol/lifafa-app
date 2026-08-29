@@ -16,6 +16,7 @@ import { useToast } from '../../context/ToastContext';
 import { botService } from '../../services/botService';
 import { botHealthService } from '../../services/botHealthService';
 import { telegramService } from '../../services/telegramService';
+import { telegramBotEngine } from '../../services/telegramBotEngine';
 import { planFeatureService, PlanSlug } from '../../services/planFeatureService';
 import { Bot, BotChannel, BotSettings, BotHealth } from '../../types';
 import {
@@ -41,6 +42,7 @@ import {
   Activity,
   HeartPulse,
   Edit3,
+  RotateCw,
 } from 'lucide-react';
 
 export const ManageBotPage: React.FC = () => {
@@ -53,6 +55,7 @@ export const ManageBotPage: React.FC = () => {
   const [channels, setChannels] = useState<BotChannel[]>([]);
   const [settings, setSettings] = useState<BotSettings | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isRunningEngine, setIsRunningEngine] = useState(false);
 
   // Modals
   const [activeModal, setActiveModal] = useState<
@@ -82,13 +85,20 @@ export const ManageBotPage: React.FC = () => {
       const botsRes = await botService.getUserBots(user.id);
       if (botsRes.data && botsRes.data.length > 0) {
         const currentBot = botsRes.data[0];
-        setBot(currentBot);
+
+        // Process incoming telegram messages & automations live
+        await telegramBotEngine.processUpdatesAndExecuteAutomations(currentBot.id);
+
+        // Re-query latest bot attributes
+        const freshRes = await botService.getUserBots(user.id);
+        const activeBot = freshRes.data?.[0] || currentBot;
+        setBot(activeBot);
 
         // Fetch sub-data in parallel
         const [channelsRes, settingsRes, healthRes] = await Promise.all([
-          botService.getBotChannels(currentBot.id),
-          botService.getBotSettings(currentBot.id),
-          botHealthService.getHealthStatus(currentBot.id),
+          botService.getBotChannels(activeBot.id),
+          botService.getBotSettings(activeBot.id),
+          botHealthService.getHealthStatus(activeBot.id),
         ]);
 
         setChannels(channelsRes.data);
@@ -108,7 +118,41 @@ export const ManageBotPage: React.FC = () => {
 
   useEffect(() => {
     fetchBotData();
-  }, [fetchBotData]);
+
+    // Auto poll Telegram every 4 seconds to execute commands and count subscribers in real-time
+    const interval = setInterval(() => {
+      if (bot?.id) {
+        telegramBotEngine.processUpdatesAndExecuteAutomations(bot.id).then((res) => {
+          if (res.newUsersCount > 0 || res.processedCount > 0) {
+            fetchBotData();
+          }
+        });
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [fetchBotData, bot?.id]);
+
+  const handleManualRunEngine = async () => {
+    if (!bot?.id) return;
+    setIsRunningEngine(true);
+    try {
+      const res = await telegramBotEngine.processUpdatesAndExecuteAutomations(bot.id);
+      if (res.success) {
+        showToast(
+          `Bot Engine Active! Processed ${res.processedCount} action(s), ${res.totalUsers} subscriber(s) registered.`,
+          'success'
+        );
+        await fetchBotData();
+      } else {
+        showToast(res.error || 'Check completed.', 'info');
+      }
+    } catch {
+      showToast('Engine run error.', 'error');
+    } finally {
+      setIsRunningEngine(false);
+    }
+  };
 
   const planSlug = (bot?.planSlug || 'basic') as PlanSlug;
   const unlockedCount = planFeatureService.getUnlockedCount(planSlug);
@@ -288,15 +332,27 @@ export const ManageBotPage: React.FC = () => {
             </div>
           </div>
 
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleOpenUpgrade()}
-            leftIcon={<Sparkles className="w-3.5 h-3.5 text-amber-500" />}
-            className="border-amber-300 text-amber-900 bg-amber-50 hover:bg-amber-100 font-bold"
-          >
-            Upgrade Plan
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleManualRunEngine}
+              isLoading={isRunningEngine}
+              leftIcon={<RotateCw className={`w-3.5 h-3.5 ${isRunningEngine ? 'animate-spin' : ''}`} />}
+              className="border-blue-200 text-blue-700 bg-blue-50/50 hover:bg-blue-100 font-bold text-xs"
+            >
+              Sync & Run Engine
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleOpenUpgrade()}
+              leftIcon={<Sparkles className="w-3.5 h-3.5 text-amber-500" />}
+              className="border-amber-300 text-amber-900 bg-amber-50 hover:bg-amber-100 font-bold"
+            >
+              Upgrade Plan
+            </Button>
+          </div>
         </div>
 
         {/* Bot Profile & Plan Card */}
