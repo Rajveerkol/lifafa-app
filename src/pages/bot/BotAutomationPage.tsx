@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { botService } from '../../services/botService';
 import { automationService } from '../../services/automationService';
+import { telegramBotEngine } from '../../services/telegramBotEngine';
 import { planFeatureService, PlanSlug } from '../../services/planFeatureService';
 import { Bot, BotAutomationRule } from '../../types';
 import {
@@ -22,6 +23,7 @@ import {
   Terminal,
   MessageSquare,
   Sparkles,
+  RotateCw,
 } from 'lucide-react';
 
 export const BotAutomationPage: React.FC = () => {
@@ -32,6 +34,7 @@ export const BotAutomationPage: React.FC = () => {
   const [bot, setBot] = useState<Bot | null>(null);
   const [rules, setRules] = useState<BotAutomationRule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRunningEngine, setIsRunningEngine] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // New rule state
@@ -56,6 +59,9 @@ export const BotAutomationPage: React.FC = () => {
         const currentBot = botsRes.data[0];
         setBot(currentBot);
 
+        // Process incoming telegram commands & automations
+        await telegramBotEngine.processUpdatesAndExecuteAutomations(currentBot.id);
+
         const rulesRes = await automationService.getRules(currentBot.id);
         setRules(rulesRes.data);
       }
@@ -66,7 +72,37 @@ export const BotAutomationPage: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+
+    // Auto poll every 6 seconds to execute automations in real-time
+    const interval = setInterval(() => {
+      if (bot?.id) {
+        telegramBotEngine.processUpdatesAndExecuteAutomations(bot.id);
+      }
+    }, 6000);
+
+    return () => clearInterval(interval);
+  }, [fetchData, bot?.id]);
+
+  const handleRunEngine = async () => {
+    if (!bot?.id) return;
+    setIsRunningEngine(true);
+    try {
+      const res = await telegramBotEngine.processUpdatesAndExecuteAutomations(bot.id);
+      if (res.success) {
+        showToast(
+          `Processed ${res.processedCount} action(s) & synced ${res.newUsersCount} subscriber(s)! Total: ${res.totalUsers}`,
+          'success'
+        );
+        await fetchData();
+      } else {
+        showToast(res.error || 'Engine check complete.', 'info');
+      }
+    } catch {
+      showToast('Engine execution error.', 'error');
+    } finally {
+      setIsRunningEngine(false);
+    }
+  };
 
   const planSlug = (bot?.planSlug || 'basic') as PlanSlug;
   const hasAutomation = planFeatureService.hasFeature(planSlug, 'automation_rules');
@@ -145,13 +181,25 @@ export const BotAutomationPage: React.FC = () => {
           </div>
 
           {hasAutomation && (
-            <Button
-              size="sm"
-              onClick={() => setIsModalOpen(true)}
-              leftIcon={<Plus className="w-4 h-4" />}
-            >
-              Add Rule
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleRunEngine}
+                isLoading={isRunningEngine}
+                leftIcon={<RotateCw className={`w-3.5 h-3.5 ${isRunningEngine ? 'animate-spin' : ''}`} />}
+                className="font-bold border-purple-200 text-purple-700 bg-purple-50/50 shadow-2xs text-xs"
+              >
+                Run Engine
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setIsModalOpen(true)}
+                leftIcon={<Plus className="w-4 h-4" />}
+              >
+                Add Rule
+              </Button>
+            </div>
           )}
         </div>
 

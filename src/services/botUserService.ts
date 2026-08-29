@@ -1,109 +1,19 @@
 import { supabase } from '../lib/supabase';
+import { telegramBotEngine } from './telegramBotEngine';
 import { BotUser } from '../types';
 
 export const botUserService = {
   /**
-   * Sync and import all real subscribers from Telegram getUpdates API
+   * Sync and import all real subscribers from Telegram getUpdates API and execute auto-replies
    */
   async syncSubscribersFromTelegram(botId: string): Promise<{ success: boolean; count: number; total: number; error?: string }> {
-    try {
-      // 1. Fetch bot and token
-      const { data: bot, error: botError } = await supabase
-        .from('bots')
-        .select('*')
-        .eq('id', botId)
-        .single();
-
-      if (botError || !bot) {
-        return { success: false, count: 0, total: 0, error: 'Bot not found.' };
-      }
-
-      const token =
-        bot?.encrypted_token ||
-        (typeof window !== 'undefined'
-          ? localStorage.getItem(`tg_token_${botId}`) || localStorage.getItem('tg_token_current')
-          : null);
-
-      if (!token || !token.includes(':')) {
-        return {
-          success: false,
-          count: 0,
-          total: bot?.total_users || 0,
-          error: 'Bot token not configured. Please link your BotFather token in Manage Bot.',
-        };
-      }
-
-      // 2. Fetch updates from Telegram API
-      let newCount = 0;
-      try {
-        const res = await fetch(`https://api.telegram.org/bot${token}/getUpdates?offset=-100&limit=100`);
-        const json = await res.json();
-
-        if (json.ok && Array.isArray(json.result)) {
-          const userMap = new Map<number, { id: number; username?: string; first_name?: string; last_name?: string }>();
-
-          for (const update of json.result) {
-            const fromUser =
-              update.message?.from ||
-              update.callback_query?.from ||
-              update.my_chat_member?.from ||
-              update.chat_member?.from;
-
-            if (fromUser && fromUser.id && !fromUser.is_bot) {
-              userMap.set(fromUser.id, {
-                id: fromUser.id,
-                username: fromUser.username,
-                first_name: fromUser.first_name,
-                last_name: fromUser.last_name,
-              });
-            }
-          }
-
-          // 3. Upsert unique users into bot_users table
-          for (const [tgId, u] of userMap.entries()) {
-            await supabase.from('bot_users').upsert(
-              {
-                bot_id: botId,
-                telegram_user_id: tgId,
-                telegram_username: u.username ? `@${u.username}` : null,
-                first_name: u.first_name || 'Subscriber',
-                last_name: u.last_name || null,
-                is_active: true,
-                last_seen_at: new Date().toISOString(),
-              },
-              { onConflict: 'bot_id,telegram_user_id' }
-            );
-            newCount++;
-          }
-        }
-      } catch (tgErr: any) {
-        console.warn('Telegram getUpdates error:', tgErr);
-      }
-
-      // 4. Update total user count on the bots table
-      const { count: totalUsers } = await supabase
-        .from('bot_users')
-        .select('*', { count: 'exact', head: true })
-        .eq('bot_id', botId);
-
-      const finalCount = totalUsers || 0;
-
-      await supabase
-        .from('bots')
-        .update({
-          total_users: finalCount,
-          last_synced_at: new Date().toISOString(),
-        })
-        .eq('id', botId);
-
-      return {
-        success: true,
-        count: newCount,
-        total: finalCount,
-      };
-    } catch (err: any) {
-      return { success: false, count: 0, total: 0, error: err.message };
-    }
+    const res = await telegramBotEngine.processUpdatesAndExecuteAutomations(botId);
+    return {
+      success: res.success,
+      count: res.newUsersCount,
+      total: res.totalUsers,
+      error: res.error,
+    };
   },
 
   /**
