@@ -78,6 +78,29 @@ export const botService = {
   },
 
   /**
+   * Update bot profile details (name, username)
+   */
+  async updateBotProfile(
+    botId: string,
+    params: { name?: string; username?: string }
+  ): Promise<{ success: boolean; error: Error | null }> {
+    try {
+      const updates: any = { updated_at: new Date().toISOString() };
+      if (params.name?.trim()) updates.name = params.name.trim();
+      if (params.username?.trim()) {
+        const u = params.username.trim();
+        updates.username = u.startsWith('@') ? u : `@${u}`;
+      }
+
+      const { error } = await supabase.from('bots').update(updates).eq('id', botId);
+      if (error) return { success: false, error };
+      return { success: true, error: null };
+    } catch (err: any) {
+      return { success: false, error: err };
+    }
+  },
+
+  /**
    * Get single bot by ID
    */
   async getBotById(botId: string): Promise<{ data: Bot | null; error: Error | null }> {
@@ -144,11 +167,11 @@ export const botService = {
     username?: string;
     planSlug?: string;
   }): Promise<{ data: Bot | null; error: Error | null }> {
-    const cleanUsername = username
-      ? username.startsWith('@')
-        ? username
-        : `@${username}`
-      : `@${name.toLowerCase().replace(/[^a-z0-9]/g, '')}_bot`;
+    const rawUsername = username || name || 'my_bot';
+    const cleaned = rawUsername.replace(/^@/, '');
+    const cleanUsername = cleaned.toLowerCase().endsWith('bot')
+      ? `@${cleaned.replace(/[^a-zA-Z0-9_]/g, '')}`
+      : `@${cleaned.replace(/[^a-zA-Z0-9_]/g, '')}_bot`;
     const cleanName = name || 'My Telegram Bot';
 
     if (!isSupabaseConfigured) {

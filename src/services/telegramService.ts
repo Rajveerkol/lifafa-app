@@ -65,7 +65,11 @@ export const telegramService = {
       const { data: { user } } = await supabase.auth.getUser();
 
       const botDisplayName = tgBotData?.first_name || params.botName || 'Telegram Bot';
-      const botUsername = tgBotData?.username ? `@${tgBotData.username}` : `@${botDisplayName.toLowerCase().replace(/[^a-z0-9]/g, '')}_bot`;
+      const rawUser = tgBotData?.username || params.botName || 'my_bot';
+      const cleaned = rawUser.replace(/^@/, '');
+      const botUsername = cleaned.toLowerCase().endsWith('bot')
+        ? `@${cleaned.replace(/[^a-zA-Z0-9_]/g, '')}`
+        : `@${cleaned.replace(/[^a-zA-Z0-9_]/g, '')}_bot`;
       const telegramBotId = tgBotData ? String(tgBotData.id) : undefined;
       const targetPlanSlug = params.planSlug || 'basic';
 

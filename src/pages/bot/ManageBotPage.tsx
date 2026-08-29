@@ -40,6 +40,7 @@ import {
   ShieldCheck,
   Activity,
   HeartPulse,
+  Edit3,
 } from 'lucide-react';
 
 export const ManageBotPage: React.FC = () => {
@@ -68,6 +69,11 @@ export const ManageBotPage: React.FC = () => {
   const [referralBonus, setReferralBonus] = useState('5');
   const [reconnectToken, setReconnectToken] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Edit Profile States
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editUsername, setEditUsername] = useState('');
 
   const fetchBotData = useCallback(async () => {
     if (!user?.id) return;
@@ -225,6 +231,30 @@ export const ManageBotPage: React.FC = () => {
     }
   };
 
+  // Edit Profile Action
+  const handleSaveProfile = async () => {
+    if (!bot?.id || !editName.trim() || !editUsername.trim()) {
+      showToast('Bot name and username are required.', 'warning');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const res = await botService.updateBotProfile(bot.id, {
+        name: editName.trim(),
+        username: editUsername.trim(),
+      });
+      if (res.success) {
+        showToast('Bot details updated successfully!', 'success');
+        setIsEditProfileOpen(false);
+        await fetchBotData();
+      } else {
+        showToast(res.error?.message || 'Failed to update bot details.', 'error');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (isLoading || !bot) {
     return (
       <DashboardLayout>
@@ -298,6 +328,19 @@ export const ManageBotPage: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setEditName(bot.name);
+                  setEditUsername(bot.username);
+                  setIsEditProfileOpen(true);
+                }}
+                leftIcon={<Edit3 className="w-3.5 h-3.5" />}
+                className="font-bold border-slate-200"
+              >
+                Edit
+              </Button>
               <Button
                 size="sm"
                 variant="secondary"
@@ -801,6 +844,34 @@ export const ManageBotPage: React.FC = () => {
         cancelText="Cancel"
         isDestructive
       />
+
+      {/* Edit Bot Profile Modal */}
+      <Modal
+        isOpen={isEditProfileOpen}
+        onClose={() => setIsEditProfileOpen(false)}
+        title="Edit Bot Details"
+        subtitle="Update your bot display name and Telegram handle"
+        maxWidth="md"
+      >
+        <div className="space-y-4 pt-1">
+          <Input
+            label="Bot Display Name"
+            placeholder="e.g. My Telegram Bot"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+          />
+          <Input
+            label="Bot Username"
+            placeholder="e.g. @hararaaa_bot"
+            value={editUsername}
+            onChange={(e) => setEditUsername(e.target.value)}
+            helperText="Username must match your bot's exact username on Telegram."
+          />
+          <Button fullWidth size="lg" onClick={handleSaveProfile} isLoading={isSubmitting}>
+            Save Changes
+          </Button>
+        </div>
+      </Modal>
 
       {/* Plan Upgrade Modal */}
       <PlanUpgradeModal
