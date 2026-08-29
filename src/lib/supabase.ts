@@ -2,16 +2,14 @@
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '../types/database.types';
 
-const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
+// Authoritative Live Supabase project credentials
+const DEFAULT_SUPABASE_URL = 'https://ozyximxfacypstcvzmxz.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_UFfiGVu-GMObpIICyN-AwA_WpWLfsiK';
 
-if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('placeholder-project')) {
-  console.info(
-    '%c[Supabase Info]%c Using placeholder or default configuration. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file to connect to your live project.',
-    'color: #1e60d5; font-weight: bold;',
-    'color: inherit;'
-  );
-}
+const supabaseUrl =
+  (import.meta as any).env?.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+const supabaseAnonKey =
+  (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(
   supabaseUrl &&
@@ -21,8 +19,8 @@ export const isSupabaseConfigured = Boolean(
 
 // Centralized typed Supabase client
 export const supabase = createClient<Database>(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-anon-key',
+  supabaseUrl,
+  supabaseAnonKey,
   {
     auth: {
       persistSession: true,
